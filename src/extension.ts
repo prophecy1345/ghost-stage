@@ -9,7 +9,6 @@ let outputChannel: vscode.OutputChannel;
 
 export function activate(context: vscode.ExtensionContext) {
     outputChannel = vscode.window.createOutputChannel('Ghost Stage');
-    outputChannel.show();
     outputChannel.appendLine('Ghost Stage extension activated!');
     console.log('Ghost Stage extension activated!');
 
@@ -56,7 +55,7 @@ export function activate(context: vscode.ExtensionContext) {
             if (isEnabled) {
                 const filePath = document.fileName;
                 const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
-                
+
                 if (workspaceFolder) {
                     const workspacePath = workspaceFolder.uri.fsPath;
                     outputChannel.appendLine(`File saved: ${filePath}`);
@@ -82,7 +81,7 @@ function checkIfGitRepository(folderPath: string): Promise<boolean> {
                 resolve(false);
                 return;
             }
-            
+
             exec('git rev-parse --is-inside-work-tree', { cwd: folderPath }, (error, stdout, stderr) => {
                 if (error || stdout.trim() !== 'true') {
                     outputChannel.appendLine(`Not a Git repository: ${error?.message || stderr}`);
@@ -98,12 +97,12 @@ function checkIfGitRepository(folderPath: string): Promise<boolean> {
 
 function setupWatchersForAllWorkspaces(context: vscode.ExtensionContext) {
     disposeWatcher();
-    
+
     if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
         outputChannel.appendLine('No workspace folders found');
         return;
     }
-    
+
     vscode.workspace.workspaceFolders.forEach(folder => {
         setupWatcherForWorkspace(context, folder.uri.fsPath);
     });
@@ -111,28 +110,28 @@ function setupWatchersForAllWorkspaces(context: vscode.ExtensionContext) {
 
 function setupWatcherForWorkspace(context: vscode.ExtensionContext, workspaceFolder: string) {
     outputChannel.appendLine(`Setting up watcher for workspace: ${workspaceFolder}`);
-    
+
     checkIfGitRepository(workspaceFolder).then(isGitRepo => {
         if (!isGitRepo) {
             outputChannel.appendLine(`Skipping watcher setup for non-Git repository: ${workspaceFolder}`);
             return;
         }
-        
+
         try {
             const pattern = new vscode.RelativePattern(workspaceFolder, "**/*");
             const newWatcher = vscode.workspace.createFileSystemWatcher(pattern, false, true, false);
             outputChannel.appendLine(`File watcher created for ${workspaceFolder}`);
-            
+
             newWatcher.onDidCreate(uri => {
                 if (isEnabled) {
                     outputChannel.appendLine(`File created: ${uri.fsPath}`);
-                    
+
                     const relativePath = path.relative(workspaceFolder, uri.fsPath);
                     if (relativePath.startsWith('.git')) {
                         outputChannel.appendLine(`Ignoring file in .git directory: ${uri.fsPath}`);
                         return;
                     }
-                    
+
                     vscode.workspace.fs.stat(uri).then(
                         (stat) => {
                             if (stat.type === vscode.FileType.File) {
@@ -147,16 +146,16 @@ function setupWatcherForWorkspace(context: vscode.ExtensionContext, workspaceFol
                     );
                 }
             });
-            
+
             if (!context.subscriptions.includes(newWatcher)) {
                 context.subscriptions.push(newWatcher);
                 outputChannel.appendLine(`Watcher added to subscriptions for ${workspaceFolder}`);
             }
-            
+
             if (!watcher) {
                 watcher = newWatcher;
             }
-            
+
         } catch (e) {
             outputChannel.appendLine(`Error setting up file watcher for ${workspaceFolder}: ${e}`);
             console.error(`Error setting up file watcher for ${workspaceFolder}:`, e);
@@ -185,7 +184,7 @@ function addFileToGit(filePath: string, workspaceFolder: string) {
         const relativePath = path.relative(gitRepoPath, filePath);
 
         outputChannel.appendLine(`Adding file to Git: ${relativePath}`);
-        exec(`git add "${relativePath}"`, { cwd: gitRepoPath }, (addError, addStdout, addStderr) => {
+        exec(`git add --ignore-errors "${relativePath}"`, { cwd: gitRepoPath }, (addError, addStdout, addStderr) => {
             if (addError) {
                 outputChannel.appendLine(`Git add error: ${addStderr}`);
                 return;

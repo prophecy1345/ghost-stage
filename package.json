@@ -6,7 +6,7 @@
   "publisher": "ghost-stage",
   "license": "MIT",
   "icon": "images/icon.png",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "engines": {
     "vscode": "^1.97.0"
   },
